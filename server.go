@@ -3,10 +3,20 @@ package multiserver
 import (
 	"context"
 	"sync"
+
+	"github.com/americanas-go/errors"
 )
+
+type d struct {
+	Ok  bool
+	Srv Server
+}
+
+var s []d
 
 type Server interface {
 	Serve(context.Context)
+	Shutdown(context.Context)
 }
 
 func Serve(ctx context.Context, srvs ...Server) {
@@ -20,10 +30,16 @@ func Serve(ctx context.Context, srvs ...Server) {
 		wg := new(sync.WaitGroup)
 		wg.Add(len(srvs))
 
-		for _, srv := range srvs {
+		for i, srv := range srvs {
+			i := i
 			srv := srv
+			s = append(s, d{
+				Ok:  true,
+				Srv: srv,
+			})
 			go func() {
 				srv.Serve(ctx)
+				s[i].Ok = false
 				wg.Done()
 			}()
 		}
@@ -31,4 +47,28 @@ func Serve(ctx context.Context, srvs ...Server) {
 		wg.Wait()
 	}
 
+}
+
+func Check(ctx context.Context) error {
+	if len(s) == 0 {
+		panic("no servers configured")
+	}
+
+	for _, a := range s {
+		if !a.Ok {
+			return errors.ServiceUnavailablef("one of servers is down")
+		}
+	}
+
+	return nil
+}
+
+func Shutdown(ctx context.Context) {
+	if len(s) == 0 {
+		panic("no servers configured")
+	}
+
+	for _, a := range s {
+		a.Srv.Shutdown(ctx)
+	}
 }

@@ -32,3 +32,13 @@ func Serve(ctx context.Context, srvs ...Server) {
 	}
 
 }
+
+func Shutdown(ctx context.Context) {
+	if len(s) == 0 {
+		panic("no servers configured")
+	}
+
+	for _, a := range s {
+		a.Srv.Shutdown(ctx)
+	}
+}

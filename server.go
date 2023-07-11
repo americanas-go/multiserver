@@ -25,7 +25,12 @@ func Serve(ctx context.Context, srvs ...Server) {
 	case 0:
 		panic("no servers configured")
 	case 1:
+		s = append(s, d{
+			Ok:  true,
+			Srv: srvs[0],
+		})
 		srvs[0].Serve(ctx)
+		s[0].Ok = false
 	default:
 		wg := new(sync.WaitGroup)
 		wg.Add(len(srvs))
